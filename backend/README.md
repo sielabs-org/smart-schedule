@@ -2,7 +2,7 @@
 
 REST API for the Smart-Schedule Automatic Timetable Generator (Dept. of Computer Engineering). Built with Express + MongoDB (Mongoose) + JWT auth.
 
-> **Note on the current frontend:** as of this backend's writing, `frontend/src` (AuthContext, Login, Admin/Teacher/StudentDashboard) is entirely mock-driven — it reads `DUMMY_TIMETABLE` from `data/dummyTimetable.js` and stores a fake user in `localStorage`. There are no `fetch`/`axios` calls in the frontend yet. This backend is fully functional on its own (verified with `node --check` on every file and a full manual review against the frontend's expected data shapes), but the frontend needs to be updated separately to actually call these endpoints instead of using the dummy data. Ask if you'd like that wiring done too.
+The frontend calls this API for real accounts. Its built-in demo shortcuts use local, read-only sample data.
 
 ## 1. Setup
 
@@ -13,11 +13,33 @@ cp .env.example .env
 # edit .env: set MONGO_URI (local mongod or MongoDB Atlas) and a real JWT_SECRET
 ```
 
+## 2. Create the first administrator
+
+Public registration is disabled. On a fresh production database, create the
+first admin through this one-time CLI process, using secrets supplied by your
+deployment environment (never put the password in source control):
+
+```bash
+# Set BOOTSTRAP_ADMIN_NAME, BOOTSTRAP_ADMIN_EMAIL, and
+# BOOTSTRAP_ADMIN_PASSWORD through your secret manager/environment.
+npm run create-admin
+```
+
+The bootstrap command refuses to create a second admin. Once this account can
+sign in, create student and teacher accounts from the Admin dashboard. Student
+accounts must be linked to a division. Teacher accounts must be linked to a
+teacher profile; their timetable access follows the subjects assigned to that
+profile. Admin accounts cannot be created from the public API or the account
+management screen. Never seed demo data in production.
+
 ## 2. Seed demo data
 
 ```bash
 npm run seed
 ```
+
+This command is for local/demo databases only and refuses to run when
+`NODE_ENV=production`.
 
 This creates:
 - 10 teachers, 14 classrooms, 5 divisions (SE1, SE2, SE3, TE1, TE2), ~25 subjects
@@ -65,24 +87,28 @@ If `npm run seed` printed division IDs isn't handy, `GET /api/divisions` (with t
 
 ## 5. API reference
 
+Only `/api/health` and `/api/auth/login` are public. All other routes require
+a valid bearer token; public account registration is disabled.
+There is no `/api/auth/register` endpoint.
+
 All routes except `/api/health`, `/api/auth/register`, `/api/auth/login` require `Authorization: Bearer <token>`.
 
 | Method | Route | Access | Purpose |
 |---|---|---|---|
-| POST | `/api/auth/register` | Public | Create a user |
 | POST | `/api/auth/login` | Public | Get a JWT |
 | GET | `/api/auth/me` | Any | Current user |
+| GET/POST | `/api/users` | Admin | List users / create a student or teacher account with a server-validated assignment |
 | GET | `/api/divisions` | Any | List divisions |
 | POST/PUT/DELETE | `/api/divisions[/:id]` | Admin | Manage divisions |
 | GET | `/api/teachers` | Any | List teachers |
-| GET | `/api/teachers/:id/timetable` | Any | A single teacher's own class slots |
+| GET | `/api/teachers/:id/timetable` | Teacher (self) / Admin | A teacher's assigned class slots |
 | POST/PUT/DELETE | `/api/teachers[/:id]` | Admin | Manage teachers |
 | GET | `/api/classrooms` | Any | List classrooms |
 | POST/PUT/DELETE | `/api/classrooms[/:id]` | Admin | Manage classrooms |
 | GET | `/api/subjects?division=<id>` | Any | List subjects |
 | POST/PUT/DELETE | `/api/subjects[/:id]` | Admin | Manage subjects (assign teacher + weekly load) |
-| GET | `/api/timetable` | Any | Every division's timetable, shaped like `DUMMY_TIMETABLE` |
-| GET | `/api/timetable/division/:id` | Any | One division's timetable |
+| GET | `/api/timetable` | Any (role-scoped) | Admin: all divisions; teacher: assigned sessions; student: own division |
+| GET | `/api/timetable/division/:id` | Any (role-scoped) | Division timetable, restricted to the student's division or teacher's own sessions |
 | POST | `/api/timetable/generate` | Admin | Run the generator (body: `{ divisionIds?: [] }`, omit for all) |
 | POST | `/api/timetable/slot` | Admin | Manually create/override one slot (clash-checked) |
 | DELETE | `/api/timetable/division/:id` | Admin | Wipe a division's generated slots |
@@ -99,4 +125,4 @@ All routes except `/api/health`, `/api/auth/register`, `/api/auth/login` require
 
 - This was verified with `node --check` on every file and a manual cross-check of response field names (`time`, `subject`, `teacher`, `classroom`, `type`) against `frontend/src/components/Timetable.jsx`, `pages/AdminDashboard.jsx`, `TeacherDashboard.jsx`, and `StudentDashboard.jsx` — they match.
 - It has **not** been run against a live MongoDB instance in the environment this was written in (no network/DB access there). Run the smoke test in section 4 yourself before relying on it in production.
-- `GET /api/teachers/:id/timetable` returns only that teacher's own class slots — useful, but note the current frontend's Teacher/Student dashboards actually render the *full division* timetable regardless of role (via `DUMMY_TIMETABLE[selectedDivision]`), so this endpoint isn't wired to anything in the UI yet.
+- The live teacher dashboard requests role-scoped timetables; built-in demo shortcuts show local sample schedules only.

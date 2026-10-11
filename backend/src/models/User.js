@@ -16,6 +16,8 @@ const userSchema = new mongoose.Schema(
     // Only relevant when role === 'student'
     division: { type: mongoose.Schema.Types.ObjectId, ref: 'Division', default: null },
 
+    // Admin privileges are granted only by the out-of-band bootstrap process.
+    isAdminProvisioned: { type: Boolean, default: false },
     isActive: { type: Boolean, default: true }
   },
   { timestamps: true }

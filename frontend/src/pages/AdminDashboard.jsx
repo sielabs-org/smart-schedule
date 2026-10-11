@@ -2,11 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import Navbar from '../components/Navbar';
 import Timetable from '../components/Timetable';
+import UserManagement from '../components/UserManagement';
 import {
   DEPARTMENT_INFO,
   DIVISIONS_INFO,
-  DAYS
+  DAYS,
+  DUMMY_TIMETABLE
 } from '../data/dummyTimetable';
+import { useAuth } from '../context/AuthContext';
 
 import {
   Sparkles,
@@ -22,6 +25,7 @@ import {
 } from 'lucide-react';
 
 export default function AdminDashboard() {
+  const { isDemo } = useAuth();
   const [selectedDivision, setSelectedDivision] = useState('SE1');
   const [selectedDay, setSelectedDay] = useState('All');
   const [showGenModal, setShowGenModal] = useState(false);
@@ -44,6 +48,12 @@ export default function AdminDashboard() {
   const fetchTimetable = async () => {
     setIsLoading(true);
     setError(null);
+    if (isDemo) {
+      setTimetableData(DUMMY_TIMETABLE);
+      setIsLoading(false);
+      return;
+    }
+
     try {
       const response = await api.get('/timetable');
       setTimetableData(response.timetable);
@@ -141,6 +151,11 @@ export default function AdminDashboard() {
       <Navbar />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+        {isDemo && (
+          <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            Demo mode: this is sample timetable data. Generation and changes require the live backend.
+          </p>
+        )}
 
         {/* =========================================
             HEADER
@@ -180,7 +195,7 @@ export default function AdminDashboard() {
 
             <button
               onClick={handleGenerateTimetable}
-              disabled={isGenerating}
+              disabled={isDemo || isGenerating}
               className={`px-5 py-3 rounded-xl text-xs sm:text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-600/20 transition-all flex items-center justify-center gap-2 ${
                 isGenerating
                   ? 'opacity-60 cursor-not-allowed'
@@ -193,12 +208,13 @@ export default function AdminDashboard() {
                 <Sparkles className="w-4 h-4" />
               )}
               <span>
-                {isGenerating ? 'Generating...' : 'Generate Timetable'}
+                {isDemo ? 'Demo: View Only' : isGenerating ? 'Generating...' : 'Generate Timetable'}
               </span>
             </button>
 
           </div>
 
+          <UserManagement disabled={isDemo} />
 
           {/* =========================================
               DIVISION CARDS

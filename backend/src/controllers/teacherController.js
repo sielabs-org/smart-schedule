@@ -6,7 +6,13 @@ const TimetableSlot = require('../models/TimetableSlot');
 // @route   GET /api/teachers
 // @access  Private
 const getTeachers = asyncHandler(async (req, res) => {
-  const teachers = await Teacher.find().populate('subjects', 'name code division').sort({ name: 1 });
+  const teachers = await Teacher.find()
+    .populate({
+      path: 'subjects',
+      select: 'name code division',
+      populate: { path: 'division', select: 'code title' }
+    })
+    .sort({ name: 1 });
   res.json({ success: true, count: teachers.length, teachers });
 });
 
@@ -71,6 +77,15 @@ const deleteTeacher = asyncHandler(async (req, res) => {
 // @access  Private (teacher sees own; admin can view any)
 const getTeacherTimetable = asyncHandler(async (req, res) => {
   const teacherId = req.params.id;
+
+  if (req.user.role === 'teacher' && String(req.user.teacher) !== teacherId) {
+    res.status(403);
+    throw new Error('You are not allowed to view another teacher timetable');
+  }
+  if (req.user.role === 'student') {
+    res.status(403);
+    throw new Error('Students are not allowed to view teacher timetables');
+  }
 
   const slots = await TimetableSlot.find({ teacherRef: teacherId })
     .populate('division', 'code title')
