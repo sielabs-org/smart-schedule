@@ -6,7 +6,8 @@ import { resolveUserDivisionCode } from '../utils/userDivision';
 import {
   DEPARTMENT_INFO,
   DIVISIONS_INFO,
-  DAYS
+  DAYS,
+  DUMMY_TIMETABLE
 } from '../data/dummyTimetable';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -18,7 +19,7 @@ import {
 } from 'lucide-react';
 
 export default function StudentDashboard() {
-  const { user } = useAuth();
+  const { user, isDemo } = useAuth();
   const [selectedDivision, setSelectedDivision] = useState(null);
   const [selectedDay, setSelectedDay] = useState('All');
   const [timetableData, setTimetableData] = useState({});
@@ -31,6 +32,14 @@ export default function StudentDashboard() {
   const fetchTimetable = async () => {
     setIsLoading(true);
     setError(null);
+    if (isDemo) {
+      const studentTimetable = { [user?.division || DEPARTMENT_INFO.divisions[0]]: DUMMY_TIMETABLE[user?.division || DEPARTMENT_INFO.divisions[0]] };
+      setTimetableData(studentTimetable);
+      setSelectedDivision(Object.keys(studentTimetable)[0]);
+      setIsLoading(false);
+      return;
+    }
+
     try {
       const [timetableResponse, divisionsResponse] = await Promise.all([
         api.get('/timetable'),
@@ -45,7 +54,14 @@ export default function StudentDashboard() {
 
       // Land on this student's own division, never on a hardcoded one.
       // "prev ||" keeps a division the student picked by hand.
-      setSelectedDivision((prev) => prev || resolveUserDivisionCode(user, divisions) || Object.keys(timetable)[0] || null);
+      const availableDivisions = Object.keys(timetable);
+      setSelectedDivision((prev) =>
+        availableDivisions.includes(prev)
+          ? prev
+          : availableDivisions.includes(resolveUserDivisionCode(user, divisions))
+            ? resolveUserDivisionCode(user, divisions)
+            : availableDivisions[0] || null
+      );
     } catch (err) {
       setError(err.message || 'Failed to load timetable');
       console.error('Timetable fetch error:', err);
@@ -63,6 +79,11 @@ export default function StudentDashboard() {
       <Navbar />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+        {isDemo && (
+          <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            Demo mode: this is sample timetable data. Changes and account data are not saved.
+          </p>
+        )}
 
         {/* Student Welcome Banner */}
         <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-sm relative overflow-hidden">
@@ -145,7 +166,7 @@ export default function StudentDashboard() {
 
               <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
 
-                {DEPARTMENT_INFO.divisions.map((div) => (
+                {Object.keys(timetableData).map((div) => (
                   <button
                     key={div}
                     onClick={() => setSelectedDivision(div)}

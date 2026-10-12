@@ -4,6 +4,7 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 
 const authRoutes = require('./routes/authRoutes');
+const userRoutes = require('./routes/userRoutes');
 const divisionRoutes = require('./routes/divisionRoutes');
 const teacherRoutes = require('./routes/teacherRoutes');
 const classroomRoutes = require('./routes/classroomRoutes');
@@ -17,7 +18,9 @@ const app = express();
 app.use(helmet());
 app.use(
   cors({
-    origin: process.env.CLIENT_ORIGIN ? process.env.CLIENT_ORIGIN.split(',') : '*',
+    origin: process.env.CLIENT_ORIGIN
+      ? process.env.CLIENT_ORIGIN.split(',').map((origin) => origin.trim()).filter(Boolean)
+      : '*',
     credentials: true
   })
 );
@@ -33,6 +36,7 @@ app.get('/api/health', (req, res) => {
 });
 
 app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
 app.use('/api/divisions', divisionRoutes);
 app.use('/api/teachers', teacherRoutes);
 app.use('/api/classrooms', classroomRoutes);

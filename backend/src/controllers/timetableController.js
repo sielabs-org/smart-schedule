@@ -97,7 +97,11 @@ const getDivisionTimetable = asyncHandler(async (req, res) => {
     }
   }
 
-  const slots = await TimetableSlot.find({ division: divisionId });
+  const slotFilter = { division: divisionId };
+  if (req.user.role === 'teacher') {
+    slotFilter.teacherRef = req.user.teacher;
+  }
+  const slots = await TimetableSlot.find(slotFilter);
 
   const grouped = {};
   DAYS.forEach((day) => {

@@ -8,7 +8,10 @@ import StudentDashboard from './pages/StudentDashboard';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function HomeRedirect() {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, isAuthLoading } = useAuth();
+  if (isAuthLoading) {
+    return <div className="flex min-h-screen items-center justify-center text-sm text-slate-500">Verifying your account...</div>;
+  }
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
@@ -35,7 +38,7 @@ export default function App() {
       <Route
         path="/teacher"
         element={
-          <ProtectedRoute allowedRoles={['teacher', 'admin']}>
+          <ProtectedRoute allowedRoles={['teacher']}>
             <TeacherDashboard />
           </ProtectedRoute>
         }
@@ -45,7 +48,7 @@ export default function App() {
       <Route
         path="/student"
         element={
-          <ProtectedRoute allowedRoles={['student', 'teacher', 'admin']}>
+          <ProtectedRoute allowedRoles={['student']}>
             <StudentDashboard />
           </ProtectedRoute>
         }

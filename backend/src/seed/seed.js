@@ -142,6 +142,7 @@ const importData = async () => {
       email: u.email,
       password: u.password,
       role: u.role,
+      isAdminProvisioned: u.role === 'admin',
       teacher: u.teacherEmail ? teacherByEmail[u.teacherEmail]._id : null,
       division: u.divisionCode ? divisionByCode[u.divisionCode]._id : null
     });
@@ -157,6 +158,9 @@ const importData = async () => {
 };
 
 const run = async () => {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('Demo seeding is disabled in production. Use the secure admin bootstrap process instead.');
+  }
   await connectDB();
 
   if (process.argv.includes('--destroy')) {

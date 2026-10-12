@@ -16,26 +16,35 @@ const protect = asyncHandler(async (req, res, next) => {
     throw new Error('Not authorized, no token provided');
   }
 
+  let decoded;
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(decoded.id);
-
-    if (!user || !user.isActive) {
-      res.status(401);
-      throw new Error('Not authorized, user no longer exists');
-    }
-
-    req.user = user;
-    next();
+    decoded = jwt.verify(token, process.env.JWT_SECRET);
   } catch (err) {
     res.status(401);
     throw new Error('Not authorized, token invalid or expired');
   }
+
+  const user = await User.findById(decoded.id);
+  if (!user || !user.isActive) {
+    res.status(401);
+    throw new Error('Not authorized, user no longer exists');
+  }
+  if (user.role === 'admin' && !user.isAdminProvisioned) {
+    res.status(403);
+    throw new Error('Administrator account has not been securely provisioned');
+  }
+
+  req.user = user;
+  next();
 });
 
 // Restricts a route to specific roles, e.g. authorize('admin')
 const authorize = (...allowedRoles) => (req, res, next) => {
-  if (!req.user || !allowedRoles.includes(req.user.role)) {
+  if (
+    !req.user ||
+    !allowedRoles.includes(req.user.role) ||
+    (req.user.role === 'admin' && !req.user.isAdminProvisioned)
+  ) {
     res.status(403);
     throw new Error(`Role '${req.user ? req.user.role : 'guest'}' is not permitted to perform this action`);
   }
